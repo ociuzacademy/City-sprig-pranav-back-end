@@ -46,4 +46,7 @@ urlpatterns = [
     path('user_view_profile/',UserProfileView.as_view({'get':'list'}),name='user_view_profile'),
     path('update_profile/',UpdateProfileView.as_view(),name='update_profile'),
     path('view_users/',AdminViewUsersView.as_view({'get':'list'}),name='view_users'),
+    path('view_product/',ViewProductByIdView.as_view({'get':'list'}),name='view_product'),
+    path('list_products/',ViewProductsListView.as_view({'get':'list'}),name='list_products'),
+    path('search_product/',SearchProductView.as_view({'get':'list'}),name='search_product'),
 ]

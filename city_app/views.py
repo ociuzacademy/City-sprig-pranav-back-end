@@ -123,7 +123,6 @@ class AddProducts(viewsets.ModelViewSet):
     queryset = Products.objects.all()
     serializer_class = ProductSerializer
     http_method_names = ['post']
-    # parser_classes = [MultiPartParser, FormParser]
 
     def create(self, request, *args, **kwargs):
         
@@ -156,3 +155,52 @@ class AdminViewUsersView(viewsets.ReadOnlyModelViewSet):
         return super().list(request, *args, **kwargs)
     
 
+class ViewProductByIdView(viewsets.ReadOnlyModelViewSet):
+    queryset = Products.objects.all()
+    serializer_class = ProductSerializer
+
+    def list(self, request, *args, **kwargs):
+        product_id = request.query_params.get("id")
+
+        if product_id:
+            try:
+                product = self.queryset.get(id=product_id)
+                serializer = self.get_serializer(product)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Products.DoesNotExist:
+                return Response({"detail": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class ViewProductsListView(viewsets.ReadOnlyModelViewSet):
+    queryset = Products.objects.all()
+    serializer_class = ProductSerializer
+
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+
+class SearchProductView(viewsets.ModelViewSet):
+    queryset = Products.objects.all()
+    serializer_class = ProductSerializer
+    http_method_names = ['get']
+
+    def list(self, request, *args, **kwargs):
+        name = request.query_params.get('name', None)
+        print("Query parameter received:", name)
+        
+        if name:
+            products = Products.objects.filter(course_name__icontains=name)
+            print("Filtered courses:", products)
+        else:
+            products = Products.objects.all()
+            print("All courses:", products)
+
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+class   ViewCatogories(viewsets.ModelViewSet):
+    def list(self, request, *args, **kwargs):
+        
+        return super().list(request, *args, **kwargs)
