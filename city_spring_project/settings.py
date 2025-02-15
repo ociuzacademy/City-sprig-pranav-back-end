@@ -25,8 +25,6 @@ SECRET_KEY = 'django-insecure-_qa&c^hct3mfw_qgxy&mdzkli29qui+5ujrr3srw2u9&g(8*gc
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -44,6 +42,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -72,6 +71,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'city_spring_project.wsgi.application'
+
+
 
 
 # Database
@@ -142,3 +143,6 @@ MEDIA_ROOT=os.path.join(BASE_DIR,'media')
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+

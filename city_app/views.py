@@ -2,8 +2,11 @@ from django.shortcuts import get_object_or_404, render
 from .models import *
 from .serializers import *
 from rest_framework import status,viewsets,generics
+from django.contrib.auth.hashers import make_password
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.contrib.auth.hashers import check_password
+
 # Create your views here.
 
 
@@ -14,46 +17,50 @@ class UserRegistrationView(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
+
         if serializer.is_valid():
-            self.perform_create(serializer)
+            user = serializer.save()
+
             response_data = {
                 "status": "success",
-                "message": "User created successfully"
+                "message": "User created successfully",
+                "user_id": user.id
             }
-            return Response(response_data, status=status.HTTP_200_OK)
+            return Response(response_data, status=status.HTTP_201_CREATED)
         else:
             response_data = {
                 "status": "failed",
                 "message": "Invalid Details",
                 "errors": serializer.errors
             }
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)    
+
 
 
 class LoginView(APIView):
-
     def post(self, request, *args, **kwargs):
         serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data.get('email')
-            password = serializer.validated_data.get('password')
+        if not serializer.is_valid():
+            return Response({"status": "failed", "message": "Invalid input", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-            try:
-                user = User.objects.get(email=email)
-                if password == user.password:
-                    response_data = {
-                        "status": "success",
-                        "message": "User logged in successfully",
-                        "user_id": str(user.id)
-                    }
-                    request.session['id'] = user.id
-                    return Response(response_data, status=status.HTTP_200_OK)
-                else:
-                    return Response({"status": "failed", "message": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-            except User.DoesNotExist:
-                return Response({"status": "failed", "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        email = serializer.validated_data.get('email')
+        password = serializer.validated_data.get('password')
 
-        return Response({"status": "failed", "message": "Invalid input"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(email=email)
+            if password == user.password:
+                response_data = {
+                    "status": "success",
+                    "message": "User logged in successfully",
+                    "user_id": str(user.id)
+                }
+                request.session['id'] = user.id
+                return Response(response_data, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "failed", "message": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": "failed", "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
 
 
 class UserProfileView(viewsets.ReadOnlyModelViewSet):

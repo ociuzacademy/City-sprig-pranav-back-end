@@ -8,11 +8,10 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = '__all__'
 
-class LoginSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['email','password']
-
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
