@@ -198,9 +198,190 @@ class SearchProductView(viewsets.ModelViewSet):
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
+    
+class BuyProduct(viewsets.ModelViewSet):
+    queryset = Products.objects.all()
+    serializer_class = ProductSerializer
+    http_method_names = ['post']
 
-
-class   ViewCatogories(viewsets.ModelViewSet):
-    def list(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
+        user_id = request.data.get('user')
+        product_id = request.data.get('product')
+        quantity = int(request.data.get('quantity', 1))  # Default quantity is 1
         
-        return super().list(request, *args, **kwargs)
+        if not user_id:
+            return Response(
+                {"status": "failed", "message": "User ID not provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not product_id:
+            return Response(
+                {"status": "failed", "message": "Product ID not provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate User
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"status": "failed", "message": "User not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Validate Product
+        try:
+            product = Products.objects.get(id=product_id)
+        except Products.DoesNotExist:
+            return Response(
+                {"status": "failed", "message": "Product not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check product availability
+        if quantity <= 0:
+            return Response(
+                {"status": "failed", "message": "Invalid quantity."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if int(product.quantity) < quantity:
+            return Response(
+                {"status": "failed", "message": "Insufficient product quantity."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+        # Calculate total price
+        total_price = product.price * quantity
+
+        # Reduce product quantity
+        product.quantity = str(int(product.quantity) - quantity)
+        product.save()
+        print(request.data)
+        # Prepare purchase data
+        purchase_data = {
+            "user": user.id,
+            "product": product.id,
+            "quantity": quantity,
+            "price": total_price,
+        }
+        # print(purchase_data)
+
+        serializer = self.get_serializer(data=purchase_data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"status": "success", "message": "Product purchased successfully", "data": serializer.data},
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            {"status": "failed", "message": "Purchase failed", "errors": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+
+# class   ViewCatogories(viewsets.ModelViewSet):
+#     def list(self, request, *args, **kwargs):
+        
+#         return super().list(request, *args, **kwargs)
+
+
+
+class WishlistView(viewsets.ModelViewSet):
+    queryset = Wishlist.objects.all()
+    serializer_class = WishlistSerializer
+    http_method_names = ['post']
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                self.perform_create(serializer)
+                return Response(
+                    {"status": "success", "message": "Product added to wishlist successfully"},
+                    status=status.HTTP_201_CREATED
+                )
+            except Exception as e:
+                return Response(
+                    {"status": "failed", "message": "An error occurred", "error": str(e)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        return Response(
+            {"status": "failed", "message": "Invalid Details", "errors": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        wishlist_item_id = kwargs.get('pk')
+        try:
+            wishlist_item = Wishlist.objects.get(pk=wishlist_item_id)
+            wishlist_item.delete()
+            return Response(
+                {"status": "success", "message": "Product removed from wishlist successfully"},
+                status=status.HTTP_200_OK
+            )
+        except Wishlist.DoesNotExist:
+            return Response(
+                {"status": "failed", "message": "Wishlist item not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"status": "failed", "message": "An error occurred", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class CartView(viewsets.ModelViewSet):
+    queryset = cart.objects.all()
+    serializer_class = CartSerializer
+    http_method_names = ['post']
+
+    def create(self, request, *args, **kwargs):
+        user_id = request.data.get('user')
+        product_id = request.data.get('product')
+        quantity = request.data.get('quantity', 1)
+
+        if not user_id or not product_id:
+            return Response(
+                {"status": "failed", "message": "User and Product are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            product = Products.objects.get(id=product_id)
+
+            # Ensure quantity is valid
+            if int(quantity) <= 0:
+                return Response(
+                    {"status": "failed", "message": "Quantity must be greater than 0"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Check if product is already in the cart
+            cart_item, created = cart.objects.get_or_create(user_id=user_id, product_id=product_id)
+            
+            if not created:
+                # Update the quantity if the product is already in the cart
+                cart_item.quantity = str(int(cart_item.quantity) + int(quantity))
+                cart_item.save()
+
+            return Response(
+                {"status": "success", "message": "Product added to cart successfully"},
+                status=status.HTTP_201_CREATED
+            )
+
+        except Products.DoesNotExist:
+            return Response(
+                {"status": "failed", "message": "Product not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"status": "failed", "message": "An error occurred", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

@@ -25,3 +25,12 @@ class AdminViewUsersSerializer(serializers.ModelSerializer):
         model = User
         fields = ['name','phone_number','email']
 
+class WishlistSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Wishlist
+        fields = '__all__'
+
+class CartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = cart
+        fields = '__all__'
