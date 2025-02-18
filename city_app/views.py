@@ -294,7 +294,7 @@ class BuyProduct(viewsets.ModelViewSet):
 class WishlistView(viewsets.ModelViewSet):
     queryset = Wishlist.objects.all()
     serializer_class = WishlistSerializer
-    http_method_names = ['post','delete']
+    http_method_names = ['post']
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -314,6 +314,30 @@ class WishlistView(viewsets.ModelViewSet):
             {"status": "failed", "message": "Invalid Details", "errors": serializer.errors},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+class ViewWishlistView(viewsets.ReadOnlyModelViewSet):
+    queryset = Wishlist.objects.all()
+    serializer_class = WishlistSerializer
+
+    def list(self, request, *args, **kwargs):
+        user_id = request.query_params.get('id')
+        print("Query parameters received:", request.query_params)
+
+        if user_id:
+            # Filter products by the provided service_centre_id
+            products = self.queryset.filter(user_id=user_id)
+        else:
+            # Return an error response if 'service_centre' is not provided
+            response_data = {
+                "status": "failed",
+                "message": "User ID is required."
+            }
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+        # Serialize the filtered queryset
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
 
 class RemoveWishlistView(generics.DestroyAPIView):
     queryset = Wishlist.objects.all()
@@ -382,6 +406,55 @@ class CartView(viewsets.ModelViewSet):
         except Products.DoesNotExist:
             return Response(
                 {"status": "failed", "message": "Product not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"status": "failed", "message": "An error occurred", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+
+class ViewCartView(viewsets.ReadOnlyModelViewSet):
+    queryset = cart.objects.all()
+    serializer_class = CartSerializer
+
+    def list(self, request, *args, **kwargs):
+        user_id = request.query_params.get('id')
+        print("Query parameters received:", request.query_params)
+
+        if user_id:
+            # Filter products by the provided service_centre_id
+            products = self.queryset.filter(user_id=user_id)
+        else:
+            # Return an error response if 'service_centre' is not provided
+            response_data = {
+                "status": "failed",
+                "message": "User ID is required."
+            }
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+        # Serialize the filtered queryset
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+
+class RemoveCartView(generics.DestroyAPIView):
+    queryset = cart.objects.all()
+    serializer_class = CartSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        cart_item_id = request.data.get('id')
+        try:
+            cart_item = cart.objects.get(id=cart_item_id)
+            cart_item.delete()
+            return Response(
+                {"status": "success", "message": "Product removed from cart successfully"},
+                status=status.HTTP_200_OK
+            )
+        except cart.DoesNotExist:
+            return Response(
+                {"status": "failed", "message": "Cart item not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
