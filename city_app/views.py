@@ -198,7 +198,7 @@ class SearchProductView(viewsets.ModelViewSet):
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
-    
+
 class BuyProduct(viewsets.ModelViewSet):
     queryset = Products.objects.all()
     serializer_class = ProductSerializer
@@ -294,7 +294,7 @@ class BuyProduct(viewsets.ModelViewSet):
 class WishlistView(viewsets.ModelViewSet):
     queryset = Wishlist.objects.all()
     serializer_class = WishlistSerializer
-    http_method_names = ['post']
+    http_method_names = ['post','delete']
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -315,10 +315,14 @@ class WishlistView(viewsets.ModelViewSet):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+class RemoveWishlistView(generics.DestroyAPIView):
+    queryset = Wishlist.objects.all()
+    serializer_class = WishlistSerializer
+
     def destroy(self, request, *args, **kwargs):
-        wishlist_item_id = kwargs.get('pk')
+        wishlist_item_id = request.data.get('id')
         try:
-            wishlist_item = Wishlist.objects.get(pk=wishlist_item_id)
+            wishlist_item = Wishlist.objects.get(id=wishlist_item_id)
             wishlist_item.delete()
             return Response(
                 {"status": "success", "message": "Product removed from wishlist successfully"},

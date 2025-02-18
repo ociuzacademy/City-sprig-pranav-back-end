@@ -51,4 +51,5 @@ urlpatterns = [
     path('view_product/',ViewProductByIdView.as_view({'get':'list'}),name='view_product'),
     path('list_products/',ViewProductsListView.as_view({'get':'list'}),name='list_products'),
     path('search_product/',SearchProductView.as_view({'get':'list'}),name='search_product'),
+    path('remove_wishlist_item/', RemoveWishlistView.as_view(), name='remove_wishlist_item'),
 ]
