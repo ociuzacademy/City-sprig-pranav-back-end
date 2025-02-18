@@ -51,7 +51,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
 ]
+
 
 ROOT_URLCONF = 'city_spring_project.urls'
 
@@ -135,9 +138,9 @@ USE_TZ = False
 STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT=os.path.join(BASE_DIR,'media')
-# STATICFILES_DIRS = [
-#     BASE_DIR / 'static',  # This is the root 'static' directory
-# ]
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',  # This is the root 'static' directory
+]
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
