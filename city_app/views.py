@@ -462,3 +462,51 @@ class RemoveCartView(generics.DestroyAPIView):
                 {"status": "failed", "message": "An error occurred", "error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class UpdateQuantityView(generics.UpdateAPIView):
+    queryset = cart.objects.all()
+    serializer_class = CartSerializer
+    http_method_names = ['patch',]
+
+    def patch(self, request, *args, **kwargs):
+        """
+        API to increase or decrease the quantity of a product in the cart.
+        """
+        cart_id = kwargs.get('pk')  # Get the cart item ID from URL parameters
+        action_type = request.data.get('action')  # 'increase' or 'decrease'
+
+        try:
+            cart_item = cart.objects.get(pk=cart_id)
+
+            if action_type == 'increase':
+                cart_item.quantity = int(cart_item.quantity) + 1
+            elif action_type == 'decrease':
+                if int(cart_item.quantity) > 1:
+                    cart_item.quantity = int(cart_item.quantity) - 1
+                else:
+                    return Response(
+                        {"status": "failed", "message": "Quantity cannot be less than 1"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                return Response(
+                    {"status": "failed", "message": "Invalid action. Use 'increase' or 'decrease'"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            cart_item.save()
+            return Response(
+                {"status": "success", "message": "Quantity updated successfully", "quantity": cart_item.quantity},
+                status=status.HTTP_200_OK
+            )
+
+        except cart.DoesNotExist:
+            return Response(
+                {"status": "failed", "message": "Cart item not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"status": "failed", "message": "An error occurred", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

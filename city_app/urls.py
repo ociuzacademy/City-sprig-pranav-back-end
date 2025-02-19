@@ -55,4 +55,5 @@ urlpatterns = [
     path('view_wishlist/',ViewWishlistView.as_view({'get':'list'}),name='view_wishlist'),
     path('remove_cart_item/', RemoveCartView.as_view(), name='remove_cart_item'),
     path('remove_wishlist_item/', RemoveWishlistView.as_view(), name='remove_wishlist_item'),
+    path('cart/<int:pk>/update_quantity/', UpdateQuantityView.as_view(), name='update_cart_quantity'),
 ]
