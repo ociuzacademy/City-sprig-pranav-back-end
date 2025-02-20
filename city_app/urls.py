@@ -25,6 +25,7 @@ router.register(r"user_register",UserRegistrationView,basename="user_register")
 router.register(r"add_product",AddProducts,basename='add_product')
 router.register(r'cart', CartView, basename='cart')
 router.register(r"wishlist",WishlistView,basename='wishlist')
+router.register(r'place_order', PlaceOrderView, basename='place_order')
 
 urlpatterns = [
     re_path(
