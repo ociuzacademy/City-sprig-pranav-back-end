@@ -367,7 +367,7 @@ class RemoveWishlistView(generics.DestroyAPIView):
 class CartView(viewsets.ModelViewSet):
     queryset = cart.objects.all()
     serializer_class = CartSerializer
-    http_method_names = ['post']
+    http_method_names = ['post','get']
 
     def create(self, request, *args, **kwargs):
         user_id = request.data.get('user')

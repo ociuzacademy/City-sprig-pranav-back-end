@@ -8,10 +8,9 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = '__all__'
 
-class LoginSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['email','password']
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)  # No unique=True here
+    password = serializers.CharField(required=True, write_only=True)
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -31,6 +30,7 @@ class WishlistSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class CartSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)  
     class Meta:
         model = cart
         fields = '__all__'
