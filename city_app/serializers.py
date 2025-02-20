@@ -39,3 +39,8 @@ class RemoveWishlistSerializer(serializers.ModelSerializer):
     class Meta:
         model = Wishlist
         fields = ['id']
+
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = '__all__'

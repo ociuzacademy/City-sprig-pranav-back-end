@@ -510,3 +510,83 @@ class UpdateQuantityView(generics.UpdateAPIView):
                 {"status": "failed", "message": "An error occurred", "error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+        
+class PlaceOrderView(viewsets.ModelViewSet):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    http_method_names = ["post"]  # Restrict to only POST requests
+
+    def create(self, request, *args, **kwargs):
+        user_id = request.data.get("user")
+
+        if not user_id:
+            return Response(
+                {"status": "failed", "message": "User ID not provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate User
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"status": "failed", "message": "User not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Fetch all cart items for the user
+        cart_items = cart.objects.filter(user=user)
+        if not cart_items.exists():
+            return Response(
+                {"status": "failed", "message": "Cart is empty."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        order_list = []
+        for item in cart_items:
+            product = item.product
+            quantity = int(item.quantity)
+
+            # Check if product has enough stock
+            if product.quantity < quantity:
+                return Response(
+                    {
+                        "status": "failed",
+                        "message": f"Insufficient stock for {product.name}. Only {product.quantity} available.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Calculate total price
+            total_price = product.price * quantity
+
+            # Reduce product quantity
+            product.quantity -= quantity
+            product.save()
+
+            # Create order data
+            order_data = {
+                "user": user.id,
+                "product": product.id,
+                "quantity": quantity,
+                "price": total_price,
+                "status": "ordered",
+            }
+
+            order_list.append(order_data)
+
+        # Bulk create orders
+        serializer = self.get_serializer(data=order_list, many=True)
+        if serializer.is_valid():
+            serializer.save()
+            # Clear the cart after order placement
+            cart_items.delete()
+            return Response(
+                {"status": "success", "message": "Order placed successfully", "data": serializer.data},
+                status=status.HTTP_201_CREATED,
+            )
+
+        return Response(
+            {"status": "failed", "message": "Order placement failed", "errors": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
