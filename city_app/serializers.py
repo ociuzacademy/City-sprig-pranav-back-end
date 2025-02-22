@@ -25,10 +25,11 @@ class AdminViewUsersSerializer(serializers.ModelSerializer):
         fields = ['name','phone_number','email']
 
 class WishlistSerializer(serializers.ModelSerializer):
+    # product = ProductSerializer(read_only=True)  # Use nested serializer
     class Meta:
         model = Wishlist
-        fields = '__all__'
-
+        fields = ['id', 'product', 'user']
+        
 class CartSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)  
     class Meta:

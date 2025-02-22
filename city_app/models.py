@@ -24,8 +24,8 @@ class Order(models.Model):
     status = models.CharField(max_length=50,default="order")
 
 class Wishlist(models.Model):
-    user = models.ForeignKey(User,on_delete=models.CASCADE,null=True,blank=True)
-    product = models.ForeignKey(Products,on_delete=models.CASCADE,null=True,blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    product = models.ForeignKey(Products, on_delete=models.CASCADE, null=True, blank=True, related_name="wishlists")
 
 
 class cart(models.Model):
