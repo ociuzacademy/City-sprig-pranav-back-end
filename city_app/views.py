@@ -317,7 +317,7 @@ class WishlistView(viewsets.ModelViewSet):
 
 class ViewWishlistView(viewsets.ReadOnlyModelViewSet):
     queryset = Wishlist.objects.all()
-    serializer_class = WishlistSerializer
+    serializer_class = ViewWishlistSerializer
 
     def list(self, request, *args, **kwargs):
         user_id = request.query_params.get('id')
