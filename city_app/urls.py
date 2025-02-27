@@ -66,5 +66,6 @@ urlpatterns = [
     path("chat_history/<int:session_id>/", get_chat_history, name="get_chat_history"),
     path("agriculture_advice/", views.get_agriculture_advice, name="get_agriculture_advice"),
     path('check-api-key/', views.check_api_key, name='check_api_key'),
-    path('chat_history/',ChatHistoryView.as_view({'get':'list'}),name='chat_history')
+    path('chat_history/',ChatHistoryView.as_view({'get':'list'}),name='chat_history'),
+    path('search-posts/', SearchPostView.as_view(), name='search-posts'),
 ]

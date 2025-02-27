@@ -616,6 +616,22 @@ class AddPostView(viewsets.ModelViewSet):
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
 
+class SearchPostView(generics.ListAPIView):
+    serializer_class = PostSerializer
+
+    def get_queryset(self):
+        query = self.request.query_params.get('q', None)
+        if query:
+            return Post.objects.annotate(similarity=TrigramSimilarity('post', query)) \
+                .filter(similarity__gt=0.2) \
+                .order_by('-similarity')
+        return Post.objects.all()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 class ListPostView(viewsets.ReadOnlyModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
@@ -766,9 +782,9 @@ from rest_framework.response import Response
 from rest_framework import status
 import google.generativeai as genai
 import google.generativeai as genai
+from django.conf import settings
 
-genai.configure(api_key="AIzaSyBiGnJc0rwQZbfLD8h5niRR-JaEqTT8AyA")
-
+genai.configure(api_key=settings.GOOGLE_AI_API_KEY)
 @api_view(["POST"])
 def get_agriculture_advice(request):
     """Provides remedies and crop recommendations for a given plant disease"""
