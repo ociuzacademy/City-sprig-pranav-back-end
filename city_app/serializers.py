@@ -8,10 +8,9 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = '__all__'
 
-class LoginSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['email','password']
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)  # No unique=True here
+    password = serializers.CharField(required=True, write_only=True)
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -51,3 +50,22 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
+
+class PostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Post
+        fields = '__all__'
+
+class ChatHistorySerializer(serializers.ModelSerializer):
+    title = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChatSession
+        fields = ['id', 'user_id', 'created_at', 'title']
+
+    def get_title(self, obj):
+        latest_message = obj.messages.order_by('-timestamp').first()
+        if latest_message:
+            words = latest_message.message.split()[:5]  # Get first 5 words
+            return ' '.join(words) + '...' if len(words) == 5 else ' '.join(words)
+        return "No messages"

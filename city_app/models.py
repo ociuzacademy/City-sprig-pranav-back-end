@@ -33,4 +33,34 @@ class cart(models.Model):
     product = models.ForeignKey(Products,on_delete=models.CASCADE,null=True,blank=True)
     quantity = models.CharField(max_length=5,default=1)
 
-    
+class Post(models.Model):
+    CATEGORY_CHOICES = [
+        ('question', 'Question'),
+        ('discussion', 'Discussion'),
+        ('news', 'News'),
+        ('announcement', 'Announcement'),
+        ('guide', 'Guide'),
+        ('meme', 'Meme'),
+        ('other', 'Other'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    post = models.TextField()
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='discussion')
+    status = models.CharField(max_length=30, default='pending')
+
+    def __str__(self):
+        return f"{self.user} - {self.category}"
+
+class ChatSession(models.Model):
+    user_id = models.ForeignKey(User,on_delete=models.CASCADE,null=True,blank=True) 
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class ChatMessage(models.Model):
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name="messages")
+    sender = models.CharField(max_length=10, choices=[('user', 'User'), ('bot', 'Bot')])
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+class Recommendation(models.Model):
+    products = models.ForeignKey(Products,on_delete=models.CASCADE,null=True,blank=True)

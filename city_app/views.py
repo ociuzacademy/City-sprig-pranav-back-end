@@ -1,9 +1,11 @@
+from django.conf import settings
 from django.shortcuts import get_object_or_404, render
 from .models import *
 from .serializers import *
 from rest_framework import status,viewsets,generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.contrib.postgres.search import TrigramSimilarity
 # Create your views here.
 
 
@@ -54,7 +56,6 @@ class LoginView(APIView):
                 return Response({"status": "failed", "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"status": "failed", "message": "Invalid input"}, status=status.HTTP_400_BAD_REQUEST)
-
 
 class UserProfileView(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
@@ -590,3 +591,227 @@ class PlaceOrderView(viewsets.ModelViewSet):
             {"status": "failed", "message": "Order placement failed", "errors": serializer.errors},
             status=status.HTTP_400_BAD_REQUEST,
         )
+    
+
+class AddPostView(viewsets.ModelViewSet):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+    http_method_names = ['post']
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            self.perform_create(serializer)
+            response_data = {
+                "status": "success",
+                "message": "Post added successfully"
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            response_data = {
+                "status": "failed",
+                "message": "Invalid Details",
+                "errors": serializer.errors
+            }
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ListPostView(viewsets.ReadOnlyModelViewSet):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+
+    def list(self, request, *args, **kwargs):
+        posts = Post.objects.filter(status='approved')
+        serializer = self.get_serializer(posts, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+class EditPostView(generics.UpdateAPIView):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+
+    def patch(self, request, *args, **kwargs):
+
+        post_id = request.data.get('id')
+        try:
+            post = Post.objects.get(id=post_id)  # Retrieve the Employee object
+        except Post.DoesNotExist:
+            return Response(
+                {"status": "failed", "message": "Post not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = PostSerializer(post, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    "status": "success",
+                    "message": "Post updated successfully",
+                    "data": serializer.data,
+                },
+                status=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                {
+                    "status": "failed",
+                    "message": "Invalid Details",
+                    "errors": serializer.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+class DeletePostView(generics.DestroyAPIView):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        post_id = request.data.get('id')
+        try:
+            post = Post.objects.get(id=post_id)
+            post.delete()
+            return Response(
+                {"status": "success", "message": "Post deleted successfully"},
+                status=status.HTTP_200_OK
+            )
+        except Post.DoesNotExist:
+            return Response(
+                {"status": "failed", "message": "Post not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"status": "failed", "message": "An error occurred", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+from django.http import JsonResponse
+from django.conf import settings
+
+def check_api_key(request):
+    # Print the API key to confirm it's loaded correctly
+    api_key = settings.GOOGLE_AI_API_KEY
+    print(f"API Key: {api_key}")  # In production, consider using logging instead of print()
+    
+    if api_key:
+        return JsonResponse({"status": "API Key is set", "api_key": api_key})
+    else:
+        return JsonResponse({"status": "API Key is not set"})
+
+
+# import google.generativeai as genai
+
+# genai.configure(api_key=settings.GOOGLE_AI_API_KEY)
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+import google.generativeai as genai
+from .models import ChatSession, ChatMessage
+import google.generativeai as genai
+from django.conf import settings
+
+genai.configure(api_key=settings.GOOGLE_AI_API_KEY)
+@api_view(["POST"])
+def start_chat_session(request):
+    """Starts a new chat session for the user"""
+    user_id = request.data.get("user_id")  # Ensure you get user_id from frontend
+    session = ChatSession.objects.create(user_id=user_id)
+    return Response({"session_id": session.id}, status=status.HTTP_201_CREATED)
+
+@api_view(["POST"])
+def chat_with_ai(request, session_id):
+    """Handles chatbot interaction with chat history"""
+    try:
+        session = ChatSession.objects.get(id=session_id)
+        user_message = request.data.get("message")
+
+        # Store user message in DB
+        ChatMessage.objects.create(session=session, sender="user", message=user_message)
+
+        # Retrieve previous messages for context
+        previous_messages = ChatMessage.objects.filter(session=session).order_by("timestamp")
+
+        # Format chat history for AI
+        conversation_history = "\n".join(
+            [f"{msg.sender}: {msg.message}" for msg in previous_messages]
+        )
+
+        # Generate AI response
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        response = model.generate_content(conversation_history + f"\nUser: {user_message}\nBot:")
+
+        bot_reply = response.text.strip()
+
+        # Store bot response in DB
+        ChatMessage.objects.create(session=session, sender="bot", message=bot_reply)
+
+        return Response({"reply": bot_reply}, status=status.HTTP_200_OK)
+
+    except ChatSession.DoesNotExist:
+        return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(["GET"])
+def get_chat_history(request, session_id):
+    """Fetches chat history for a given session"""
+    try:
+        session = ChatSession.objects.get(id=session_id)
+        messages = ChatMessage.objects.filter(session=session).order_by("timestamp")
+        chat_history = [{"sender": msg.sender, "message": msg.message, "timestamp": msg.timestamp} for msg in messages]
+        return Response({"chat_history": chat_history}, status=status.HTTP_200_OK)
+    except ChatSession.DoesNotExist:
+        return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+import google.generativeai as genai
+import google.generativeai as genai
+
+genai.configure(api_key="AIzaSyBiGnJc0rwQZbfLD8h5niRR-JaEqTT8AyA")
+
+@api_view(["POST"])
+def get_agriculture_advice(request):
+    """Provides remedies and crop recommendations for a given plant disease"""
+    try:
+        disease_name = request.data.get("disease")
+
+        if not disease_name:
+            return Response({"error": "Disease name is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # AI prompt for an agriculture expert response
+        prompt = f"""
+        Act as an agriculture expert. A farmer has identified a plant disease: {disease_name}.
+        - Provide effective remedies to cure or prevent the disease.
+        - Suggest alternative crops that are more resistant to this disease.
+        - If applicable, recommend organic or chemical treatments and best farming practices.
+        """
+
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        response = model.generate_content(prompt)
+        ai_response = response.text.strip()
+
+        return Response({"disease": disease_name, "advice": ai_response}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+class ChatHistoryView(viewsets.ReadOnlyModelViewSet):
+    queryset = ChatSession.objects.prefetch_related('messages').all()
+    serializer_class = ChatHistorySerializer
+
+    def list(self, request, *args, **kwargs):
+        user_id = request.query_params.get('id')
+        print("Query parameters received:", request.query_params)
+
+        if user_id:
+            history = self.queryset.filter(user_id=user_id)
+        else:
+            response_data = {
+                "status": "failed",
+                "message": "User ID is required."
+            }
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(history, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -26,6 +26,7 @@ router.register(r"add_product",AddProducts,basename='add_product')
 router.register(r'cart', CartView, basename='cart')
 router.register(r"wishlist",WishlistView,basename='wishlist')
 router.register(r'place_order', PlaceOrderView, basename='place_order')
+router.register(r"post",AddPostView,basename="post")
 
 urlpatterns = [
     re_path(
@@ -57,4 +58,13 @@ urlpatterns = [
     path('remove_cart_item/', RemoveCartView.as_view(), name='remove_cart_item'),
     path('remove_wishlist_item/', RemoveWishlistView.as_view(), name='remove_wishlist_item'),
     path('cart/<int:pk>/update_quantity/', UpdateQuantityView.as_view(), name='update_cart_quantity'),
+    path('view_posts/',ListPostView.as_view({'get':'list'}),name='view_posts'),
+    path('edit_post/',EditPostView.as_view(),name='edit_post'),
+    path('delete_post/',DeletePostView.as_view(),name='delete_post'),
+    path("start_chat/", start_chat_session, name="start_chat_session"),
+    path("chat/<int:session_id>/", chat_with_ai, name="chat_with_ai"),
+    path("chat_history/<int:session_id>/", get_chat_history, name="get_chat_history"),
+    path("agriculture_advice/", views.get_agriculture_advice, name="get_agriculture_advice"),
+    path('check-api-key/', views.check_api_key, name='check_api_key'),
+    path('chat_history/',ChatHistoryView.as_view({'get':'list'}),name='chat_history')
 ]
