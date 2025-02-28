@@ -424,21 +424,37 @@ class ViewCartView(viewsets.ReadOnlyModelViewSet):
         user_id = request.query_params.get('id')
         print("Query parameters received:", request.query_params)
 
-        if user_id:
-            # Filter products by the provided service_centre_id
-            products = self.queryset.filter(user_id=user_id)
-        else:
-            # Return an error response if 'service_centre' is not provided
-            response_data = {
+        if not user_id:
+            return Response({
                 "status": "failed",
                 "message": "User ID is required."
-            }
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Serialize the filtered queryset
-        serializer = self.get_serializer(products, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        products = self.queryset.filter(user_id=user_id)
+        if not products.exists():
+            return Response({
+                "status": "failed",
+                "message": "No cart items found for this user."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        cart_items = []
+        total_price = 0
+
+        for item in products:
+            cart_items.append({
+                "product": item.product.id,
+                "quantity": item.quantity
+            })
+            total_price += float(item.product.price) * int(item.quantity) if item.product.price else 0
+
+        response_data = {
+            "user": user_id,
+            "cart_items": cart_items,
+            "totalPrice": total_price
+        }
         
+        return Response(response_data, status=status.HTTP_200_OK)
+    
 
 class RemoveCartView(generics.DestroyAPIView):
     queryset = cart.objects.all()
