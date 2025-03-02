@@ -443,7 +443,10 @@ class ViewCartView(viewsets.ReadOnlyModelViewSet):
         for item in products:
             cart_items.append({
                 "product": item.product.id,
-                "quantity": item.quantity
+                "quantity": item.quantity,
+                "name":item.product.name,
+                "image":item.product.image,
+                "price":item.product.price
             })
             total_price += float(item.product.price) * int(item.quantity) if item.product.price else 0
 
