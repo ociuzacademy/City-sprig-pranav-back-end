@@ -31,7 +31,7 @@ class Wishlist(models.Model):
 class cart(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE,null=True,blank=True)
     product = models.ForeignKey(Products,on_delete=models.CASCADE,null=True,blank=True)
-    quantity = models.CharField(max_length=5,default=1)
+    quantity = models.IntegerField(default=1)
 
 class Post(models.Model):
     CATEGORY_CHOICES = [

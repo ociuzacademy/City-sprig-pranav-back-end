@@ -421,7 +421,7 @@ class ViewCartView(viewsets.ReadOnlyModelViewSet):
     serializer_class = CartSerializer
 
     def list(self, request, *args, **kwargs):
-        user_id = request.query_params.get('id')
+        user_id = request.query_params.get('user_id')
         print("Query parameters received:", request.query_params)
 
         if not user_id:
@@ -445,8 +445,8 @@ class ViewCartView(viewsets.ReadOnlyModelViewSet):
                 "product": item.product.id,
                 "quantity": item.quantity,
                 "name":item.product.name,
-                "image":item.product.image,
-                "price":item.product.price
+                "image":item.product.image.url if item.product.image else None,
+                "price":item.product.price if item.product.price else 0
             })
             total_price += float(item.product.price) * int(item.quantity) if item.product.price else 0
 
