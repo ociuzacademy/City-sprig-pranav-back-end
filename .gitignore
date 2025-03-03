@@ -139,3 +139,12 @@ GitHub.sublime-settings
 
 #venv-city
 venv-city/
+
+# Ignore model files
+*.pt
+*.h5
+
+
+# Ignore Python cache
+__pycache__/
+*.pyc

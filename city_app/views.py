@@ -850,3 +850,75 @@ class ChatHistoryView(viewsets.ReadOnlyModelViewSet):
 
         serializer = self.get_serializer(history, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+import torch
+from torchvision import transforms
+from PIL import Image
+import pandas as pd
+from django.http import JsonResponse
+
+# Load the model
+MODEL_PATH = "path/to/plant_disease_ai/1.Plant_Disease_Detection/model/plant_disease_model_1_latest.pt"
+model = torch.load(MODEL_PATH, map_location=torch.device('cpu'))
+model.eval()
+
+# Load disease info CSV
+disease_info = pd.read_csv("path/to/plant_disease_ai/1.Plant_Disease_Detection/disease_info.csv")
+
+# Function to predict disease
+def predict_disease(image_path):
+    image = Image.open(image_path)
+    transform = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+    image = transform(image).unsqueeze(0)
+
+    with torch.no_grad():
+        outputs = model(image)
+        _, predicted = torch.max(outputs, 1)
+    
+    disease_name = disease_info.iloc[predicted.item()]["disease_name"]
+    return disease_name
+
+# Django view
+def detect_plant_disease(request):
+    if request.method == "POST" and request.FILES.get("image"):
+        image = request.FILES["image"]
+        disease = predict_disease(image)
+        return JsonResponse({"disease": disease})
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
+
+
+
+import tensorflow as tf
+import numpy as np
+from tensorflow.keras.preprocessing import image
+from django.http import JsonResponse
+
+# Load the Keras model
+MODEL_PATH = "path/to/plant_disease_ai/2.Poisonous_Plant_Identification/keras.model.h5"
+model = tf.keras.models.load_model(MODEL_PATH)
+
+# Load class labels
+LABELS_PATH = "path/to/plant_disease_ai/2.Poisonous_Plant_Identification/labels.txt"
+with open(LABELS_PATH, "r") as f:
+    class_labels = f.read().splitlines()
+
+# Function to predict if a plant is poisonous
+def predict_poisonous(image_path):
+    img = image.load_img(image_path, target_size=(224, 224))
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0) / 255.0  # Normalize
+
+    prediction = model.predict(img_array)
+    predicted_class = np.argmax(prediction)
+    return class_labels[predicted_class]
+
+# Django view
+def identify_poisonous_plant(request):
+    if request.method == "POST" and request.FILES.get("image"):
+        image = request.FILES["image"]
+        plant = predict_poisonous(image)
+        return JsonResponse({"plant": plant})
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
