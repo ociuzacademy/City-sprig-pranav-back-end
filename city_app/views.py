@@ -613,7 +613,7 @@ class PlaceOrderView(viewsets.ModelViewSet):
 
 class ViewOrderedItemsView(viewsets.ReadOnlyModelViewSet):
     queryset = Order.objects.all()
-    serializer_class = OrderSerializer
+    serializer_class = ViewOrderSerializer
 
     def list(self, request, *args, **kwargs):
         user_id = request.query_params.get('id')
