@@ -610,7 +610,31 @@ class PlaceOrderView(viewsets.ModelViewSet):
             {"status": "failed", "message": "Order placement failed", "errors": serializer.errors},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    
+
+class ViewOrderedItemsView(viewsets.ReadOnlyModelViewSet):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+
+    def list(self, request, *args, **kwargs):
+        user_id = request.query_params.get('id')
+        print("Query parameters received:", request.query_params)
+
+        if user_id:
+            # Filter products by the provided service_centre_id
+            products = self.queryset.filter(user_id=user_id)
+        else:
+            # Return an error response if 'service_centre' is not provided
+            response_data = {
+                "status": "failed",
+                "message": "User ID is required."
+            }
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+        # Serialize the filtered queryset
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+
 
 class AddPostView(viewsets.ModelViewSet):
     queryset = Post.objects.all()

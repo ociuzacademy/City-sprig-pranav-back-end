@@ -70,4 +70,5 @@ urlpatterns = [
     path('search-posts/', SearchPostView.as_view(), name='search-posts'),
     path("detect-plant-disease/", detect_plant_disease, name="detect_plant_disease"),
     path("identify-poisonous-plant/", identify_poisonous_plant, name="identify_poisonous_plant"),
+    path('view_ordered_items/',ViewOrderedItemsView.as_view({'get':'list'}),name='view_ordered_items'),
 ]
