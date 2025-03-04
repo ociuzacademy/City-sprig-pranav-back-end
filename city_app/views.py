@@ -442,7 +442,7 @@ class ViewCartView(viewsets.ReadOnlyModelViewSet):
 
         for item in products:
             cart_items.append({
-                "product": item.product.id,
+                "product_id": item.product.id,
                 "quantity": item.quantity,
                 "name":item.product.name,
                 "image":item.product.image.url if item.product.image else None,
