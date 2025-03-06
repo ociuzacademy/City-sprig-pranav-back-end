@@ -25,6 +25,21 @@ class PostAdmin(admin.ModelAdmin):
         queryset.update(status='reject')
     reject_posts.short_description = "Reject selected posts"  
 
+class CartAdmin(admin.ModelAdmin):
+    list_display = ('user','product','qunatity')
+    fields = ('user','product','qunatity')
+    list_filter = ('user','product','qunatity')
+
+class WishlistAdmin(admin.ModelAdmin):
+    list_display = ('user','product')
+    fields = ('user','product')
+    list_filter = ('user','product')
+
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ('')
+
 admin.site.register(User,UserAdmin)
 admin.site.register(Products,ProductAdmin)
 admin.site.register(Post, PostAdmin)
+admin.site.register(cart,CartAdmin)
+admin.site.register(Wishlist,WishlistAdmin)
