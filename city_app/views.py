@@ -7,7 +7,33 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.postgres.search import TrigramSimilarity
 # Create your views here.
+import city_app.views
+import torch
+from pathlib import Path
 
+from pathlib import Path
+
+from pathlib import Path
+# Get the BASE_DIR of your project
+# BASE_DIR = Path(__file__).resolve().parent.parent
+
+# # Correct the model path
+# MODEL_PATH = BASE_DIR / "plant_disease_ai" / "Plant_Disease_Detection" / "model" / "plant_disease_model_1_latest.pt"
+
+# def load_model():
+#     if os.path.exists(MODEL_PATH):
+#         return torch.load(MODEL_PATH, map_location=torch.device('cpu'))
+#     else:
+#         raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
+# # Convert to string if needed
+# MODEL_PATH = str(MODEL_PATH)
+
+# print("Resolved MODEL_PATH:", MODEL_PATH)  # Debugging
+# print("Model exists:", Path(MODEL_PATH).exists())  # Debugging
+
+# # Load the model
+# import torch
+# model = torch.load(MODEL_PATH, map_location=torch.device('cpu'), weights_only=True)
 
 class UserRegistrationView(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -743,6 +769,16 @@ class DeletePostView(generics.DestroyAPIView):
                 {"status": "failed", "message": "An error occurred", "error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class RecommendationView(viewsets.ReadOnlyModelViewSet):
+    queryset = Recommendation.objects.all()
+    serializer_class = RecommendationSerializer
+
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+
 from django.http import JsonResponse
 from django.conf import settings
 
@@ -875,74 +911,99 @@ class ChatHistoryView(viewsets.ReadOnlyModelViewSet):
         serializer = self.get_serializer(history, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
-import torch
-from torchvision import transforms
-from PIL import Image
-import pandas as pd
 from django.http import JsonResponse
+from plant_disease_ai.Plant_Disease_Detection.app import predict_disease  # Import the function
+import os
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.parsers import MultiPartParser, FormParser
 
-# Load the model
-MODEL_PATH = "path/to/plant_disease_ai/1.Plant_Disease_Detection/model/plant_disease_model_1_latest.pt"
-model = torch.load(MODEL_PATH, map_location=torch.device('cpu'))
-model.eval()
+class PlantDiseasePredictionView(APIView):
+    parser_classes = (MultiPartParser, FormParser)  # Allow image file uploads
 
-# Load disease info CSV
-disease_info = pd.read_csv("path/to/plant_disease_ai/1.Plant_Disease_Detection/disease_info.csv")
+    def post(self, request, *args, **kwargs):
+        image = request.FILES.get("image")
+        if not image:
+            return Response({"error": "No image provided"}, status=400)
 
-# Function to predict disease
-def predict_disease(image_path):
-    image = Image.open(image_path)
-    transform = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
-    image = transform(image).unsqueeze(0)
+        temp_dir = os.path.join(os.path.dirname(__file__), "temp")
+        os.makedirs(temp_dir, exist_ok=True)
+        image_path = os.path.join(temp_dir, image.name)
 
-    with torch.no_grad():
-        outputs = model(image)
-        _, predicted = torch.max(outputs, 1)
-    
-    disease_name = disease_info.iloc[predicted.item()]["disease_name"]
-    return disease_name
+        with open(image_path, "wb") as f:
+            f.write(image.read())
 
-# Django view
-def detect_plant_disease(request):
-    if request.method == "POST" and request.FILES.get("image"):
-        image = request.FILES["image"]
-        disease = predict_disease(image)
-        return JsonResponse({"disease": disease})
+        prediction = predict_disease(image_path)
+        os.remove(image_path)
 
-    return JsonResponse({"error": "Invalid request"}, status=400)
+        return Response({"prediction": prediction})
 
-
-
-import tensorflow as tf
+import os
 import numpy as np
-from tensorflow.keras.preprocessing import image
-from django.http import JsonResponse
+from PIL import Image, ImageOps
+from keras.models import load_model
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
 
-# Load the Keras model
-MODEL_PATH = "path/to/plant_disease_ai/2.Poisonous_Plant_Identification/keras.model.h5"
-model = tf.keras.models.load_model(MODEL_PATH)
+# Load the Poisonous Plant Identification model
 
-# Load class labels
-LABELS_PATH = "path/to/plant_disease_ai/2.Poisonous_Plant_Identification/labels.txt"
-with open(LABELS_PATH, "r") as f:
-    class_labels = f.read().splitlines()
+MODEL_PATH = os.path.join(settings.BASE_DIR, "plant_disease_ai", "Poisonous_Plant_Identification", "keras_model.h5")
+LABELS_PATH = os.path.join(settings.BASE_DIR, "plant_disease_ai", "Poisonous_Plant_Identification", "labels.txt")
 
-# Function to predict if a plant is poisonous
-def predict_poisonous(image_path):
-    img = image.load_img(image_path, target_size=(224, 224))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0) / 255.0  # Normalize
+print("Resolved Model Path:", MODEL_PATH)  # Debugging print
 
-    prediction = model.predict(img_array)
-    predicted_class = np.argmax(prediction)
-    return class_labels[predicted_class]
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(f"Model file not found at: {MODEL_PATH}")
 
-# Django view
-def identify_poisonous_plant(request):
-    if request.method == "POST" and request.FILES.get("image"):
-        image = request.FILES["image"]
-        plant = predict_poisonous(image)
-        return JsonResponse({"plant": plant})
+model = load_model(MODEL_PATH, compile=False)
 
-    return JsonResponse({"error": "Invalid request"}, status=400)
+# Load labels
+with open(LABELS_PATH, "r") as file:
+    class_names = [line.strip() for line in file.readlines()]
+
+class PoisonousPlantPredictionView(APIView):
+    parser_classes = (MultiPartParser, FormParser)  # Allow image uploads
+
+    def post(self, request, *args, **kwargs):
+        image = request.FILES.get("image")
+        if not image:
+            return Response({"error": "No image provided"}, status=400)
+
+        # Save uploaded image temporarily
+        temp_dir = os.path.join(os.path.dirname(__file__), "temp")
+        os.makedirs(temp_dir, exist_ok=True)
+        image_path = os.path.join(temp_dir, image.name)
+
+        with open(image_path, "wb") as f:
+            f.write(image.read())
+
+        # Make prediction
+        prediction = self.predict_poisonous_plant(image_path)
+
+        # Clean up temp image
+        os.remove(image_path)
+
+        return Response({"prediction": prediction})
+
+    def predict_poisonous_plant(self, image_path):
+        """Predict whether the plant is poisonous and return details."""
+        image = Image.open(image_path).convert("RGB")
+        size = (224, 224)
+        image = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+
+        # Convert image to numpy array
+        image_array = np.asarray(image)
+        normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
+        data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+        data[0] = normalized_image_array
+
+        # Make prediction
+        prediction = model.predict(data)
+        index = np.argmax(prediction)
+        class_name = class_names[index]
+        confidence_score = prediction[0][index]
+
+        return {
+            "plant_type": class_name.strip(),
+            "confidence_score": float(confidence_score),
+        }

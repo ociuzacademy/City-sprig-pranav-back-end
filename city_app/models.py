@@ -63,4 +63,8 @@ class ChatMessage(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
 class Recommendation(models.Model):
-    products = models.ForeignKey(Products,on_delete=models.CASCADE,null=True,blank=True)
+    name = models.CharField(max_length=100,default="")
+    description = models.TextField()
+    price = models.DecimalField(decimal_places=2,max_digits=10,null=True,blank=True)
+    quantity = models.CharField(max_length=50,default="")
+    image = models.FileField(upload_to="product_images",null=True,blank=True)

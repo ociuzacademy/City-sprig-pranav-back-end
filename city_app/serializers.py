@@ -78,3 +78,8 @@ class ChatHistorySerializer(serializers.ModelSerializer):
             words = latest_message.message.split()[:5]  # Get first 5 words
             return ' '.join(words) + '...' if len(words) == 5 else ' '.join(words)
         return "No messages"
+    
+class RecommendationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recommendation
+        fields = '__all__'

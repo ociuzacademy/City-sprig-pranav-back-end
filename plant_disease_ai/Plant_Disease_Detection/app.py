@@ -11,7 +11,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
 import torchvision.transforms.functional as TF
-
+import os
+import torch
 
 
 # Load the model
@@ -74,13 +75,23 @@ class CNN(nn.Module):
 
 targets_size = 39
 model = CNN(targets_size)
-model.load_state_dict(torch.load("model/plant_disease_model_1_latest.pt"))
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "plant_disease_model_1_latest.pt")
+
+model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu'), weights_only=True))
 model.eval()
 
 
 # Load other details
-disease_info = pd.read_csv('disease_info.csv' , encoding='cp1252')
-supplement_info = pd.read_csv('supplement_info.csv',encoding='cp1252')
+csv_path = os.path.join(os.path.dirname(__file__), 'disease_info.csv')
+if not os.path.exists(csv_path):
+    raise FileNotFoundError(f"CSV file not found: {csv_path}")
+
+disease_info = pd.read_csv(csv_path, encoding='cp1252')
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.join(BASE_DIR, 'supplement_info.csv')
+
+supplement_info = pd.read_csv(csv_path, encoding='cp1252')
 
 
 
@@ -88,8 +99,10 @@ supplement_info = pd.read_csv('supplement_info.csv',encoding='cp1252')
 # Read input image
 # You may edit the image name to read different images  in the folder
 
-image = Image.open("test_images/grape_black_rot.JPG")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+image_path = os.path.join(BASE_DIR, "test_images", "grape_black_rot.JPG")
 
+image = Image.open(image_path)
 
 # Make prediction
 image = image.resize((224, 224))
@@ -115,3 +128,43 @@ print()
 print("Suppliment to prevent is: ", supplement_name)
 print()
 print("Link to buy suppliment is ", supplement_buy_link)
+
+
+import os
+import torch
+from PIL import Image
+import torchvision.transforms as transforms
+
+# Load the AI model from the correct path
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "plant_disease_model_1_latest.pt")
+model = CNN(targets_size)
+model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu'), weights_only=True))
+model.eval()
+
+def predict_disease(image_path):
+    image = Image.open(image_path)
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+    ])
+    image = transform(image).unsqueeze(0)
+
+    with torch.no_grad():
+        output = model(image)
+
+    pred_index = output.argmax(1).item()  # Get the predicted index
+
+    # Retrieve disease information using the index
+    disease = disease_info['disease_name'][pred_index]
+    description = disease_info['description'][pred_index]
+    prevention = disease_info['Possible Steps'][pred_index]
+    supplement_name = supplement_info['supplement name'][pred_index]
+    supplement_buy_link = supplement_info['buy link'][pred_index]
+
+    return {
+        "disease": disease,
+        "description": description,
+        "prevention": prevention,
+        "supplement": supplement_name,
+        "buy_link": supplement_buy_link
+    }

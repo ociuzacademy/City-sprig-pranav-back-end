@@ -11,11 +11,17 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 import os
 from pathlib import Path
+import pymysql
+import torch
+pymysql.install_as_MySQLdb()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+# MODEL_PATH = Path("C:/python-ociuz/myprojects/city_spring/city_spring_project/plant_disease_ai/Plant_Disease_Detection/model/plant_disease_model_1_latest.pt")
 
-
+# model = torch.load(str(MODEL_PATH), map_location=torch.device('cpu'))
+# print(MODEL_PATH)  # Print the full path
+# print(MODEL_PATH.exists())
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 

@@ -25,10 +25,10 @@ class PostAdmin(admin.ModelAdmin):
         queryset.update(status='reject')
     reject_posts.short_description = "Reject selected posts"  
 
-class CartAdmin(admin.ModelAdmin):
-    list_display = ('user','product','qunatity')
-    fields = ('user','product','qunatity')
-    list_filter = ('user','product','qunatity')
+# class CartAdmin(admin.ModelAdmin):
+#     list_display = ('id', 'user', 'quantity', 'price')  # Fix 'qunatity' to 'quantity'
+#     list_filter = ('user', 'status', 'quantity')  # Fix here too
+#     fields = ('user','product','qunatity')
 
 class WishlistAdmin(admin.ModelAdmin):
     list_display = ('user','product')
@@ -36,10 +36,17 @@ class WishlistAdmin(admin.ModelAdmin):
     list_filter = ('user','product')
 
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('')
+    list_display = ('user','product','quantity','price','date','status')
+    fields = ('user','product','quantity','price','date','status')
+    list_filter = ('user','product','date')
+
+class RecommendationAdmin(admin.ModelAdmin):
+    list_display = ('name','description','price','quantity','image')
+    fields = ('name','description','price','quantity','image')
 
 admin.site.register(User,UserAdmin)
 admin.site.register(Products,ProductAdmin)
 admin.site.register(Post, PostAdmin)
-admin.site.register(cart,CartAdmin)
+admin.site.register(Recommendation,RecommendationAdmin)
 admin.site.register(Wishlist,WishlistAdmin)
+admin.site.register(Order,OrderAdmin)
