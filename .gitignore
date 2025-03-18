@@ -138,11 +138,8 @@ GitHub.sublime-settings
 .history
 
 #venv-city
+venv-citys/
 venv-city/
-
-# Ignore model files
-*.pt
-*.h5
 
 
 # Ignore Python cache
