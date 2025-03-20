@@ -8,7 +8,6 @@ from rest_framework.views import APIView
 from django.contrib.postgres.search import TrigramSimilarity
 # Create your views here.
 import city_app.views
-import torch
 from pathlib import Path
 
 from pathlib import Path
@@ -781,7 +780,6 @@ class RecommendationView(viewsets.ReadOnlyModelViewSet):
 
 from django.http import JsonResponse
 from django.conf import settings
-
 def check_api_key(request):
     # Print the API key to confirm it's loaded correctly
     api_key = settings.GOOGLE_AI_API_KEY
@@ -911,99 +909,138 @@ class ChatHistoryView(viewsets.ReadOnlyModelViewSet):
         serializer = self.get_serializer(history, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-from django.http import JsonResponse
-from plant_disease_ai.Plant_Disease_Detection.app import predict_disease  # Import the function
-import os
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.parsers import MultiPartParser, FormParser
+# 
 
-class PlantDiseasePredictionView(APIView):
-    parser_classes = (MultiPartParser, FormParser)  # Allow image file uploads
-
-    def post(self, request, *args, **kwargs):
-        image = request.FILES.get("image")
-        if not image:
-            return Response({"error": "No image provided"}, status=400)
-
-        temp_dir = os.path.join(os.path.dirname(__file__), "temp")
-        os.makedirs(temp_dir, exist_ok=True)
-        image_path = os.path.join(temp_dir, image.name)
-
-        with open(image_path, "wb") as f:
-            f.write(image.read())
-
-        prediction = predict_disease(image_path)
-        os.remove(image_path)
-
-        return Response({"prediction": prediction})
-
-import os
-import numpy as np
-from PIL import Image, ImageOps
-from keras.models import load_model
+import google.generativeai as genai
+from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
+from PIL import Image
+import json
 
-# Load the Poisonous Plant Identification model
+# Configure Google AI API
+genai.configure(api_key=settings.GOOGLE_AI_API_KEY)
 
-MODEL_PATH = os.path.join(settings.BASE_DIR, "plant_disease_ai", "Poisonous_Plant_Identification", "keras_model.h5")
-LABELS_PATH = os.path.join(settings.BASE_DIR, "plant_disease_ai", "Poisonous_Plant_Identification", "labels.txt")
-
-print("Resolved Model Path:", MODEL_PATH)  # Debugging print
-
-if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"Model file not found at: {MODEL_PATH}")
-
-model = load_model(MODEL_PATH, compile=False)
-
-# Load labels
-with open(LABELS_PATH, "r") as file:
-    class_names = [line.strip() for line in file.readlines()]
-
-class PoisonousPlantPredictionView(APIView):
-    parser_classes = (MultiPartParser, FormParser)  # Allow image uploads
+class PlantIdentificationView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
-        image = request.FILES.get("image")
-        if not image:
-            return Response({"error": "No image provided"}, status=400)
+        if 'image' not in request.FILES:
+            return Response({"error": "No image uploaded."}, status=400)
 
-        # Save uploaded image temporarily
-        temp_dir = os.path.join(os.path.dirname(__file__), "temp")
-        os.makedirs(temp_dir, exist_ok=True)
-        image_path = os.path.join(temp_dir, image.name)
+        # Open uploaded image
+        uploaded_image = request.FILES['image']
+        image = Image.open(uploaded_image)
 
-        with open(image_path, "wb") as f:
-            f.write(image.read())
+        # Initialize Gemini AI Model
+        model = genai.GenerativeModel("gemini-1.5-flash")
 
-        # Make prediction
-        prediction = self.predict_poisonous_plant(image_path)
+        # Send image to Gemini AI with a strict JSON format prompt
+        response = model.generate_content([
+            {"text": "Identify the plant in this image and return ONLY JSON. "
+                     "DO NOT include any explanations or additional text. "
+                     "The JSON should have these keys: "
+                     "'identified_plant' (string), 'description' (string), and 'uses' (list of strings)."},
+            image
+        ])
 
-        # Clean up temp image
-        os.remove(image_path)
+        # Print the response for debugging
+        print("RAW AI RESPONSE:", response.text)  # Add this line to see what AI returns
 
-        return Response({"prediction": prediction})
+        # Try to parse AI response as JSON
+        try:
+            response_text = response.text.strip()
+            response_text = re.sub(r"^```json|```$", "", response_text).strip() # Remove unnecessary spaces
+            plant_info = json.loads(response_text)  # Convert response text to JSON
+        except json.JSONDecodeError:
+            return Response({"error": "AI response was not in JSON format.", "raw_response": response.text}, status=500)
 
-    def predict_poisonous_plant(self, image_path):
-        """Predict whether the plant is poisonous and return details."""
-        image = Image.open(image_path).convert("RGB")
-        size = (224, 224)
-        image = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+        return Response(plant_info, status=200)
+    
 
-        # Convert image to numpy array
-        image_array = np.asarray(image)
-        normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
-        data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
-        data[0] = normalized_image_array
+    
+class PlantDiseasePredictionView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
 
-        # Make prediction
-        prediction = model.predict(data)
-        index = np.argmax(prediction)
-        class_name = class_names[index]
-        confidence_score = prediction[0][index]
+    def post(self, request, *args, **kwargs):
+        if 'image' not in request.FILES:
+            return Response({"error": "No image uploaded."}, status=400)
 
-        return {
-            "plant_type": class_name.strip(),
-            "confidence_score": float(confidence_score),
-        }
+        # Open uploaded image
+        uploaded_image = request.FILES['image']
+        image = Image.open(uploaded_image)
+
+        # Initialize Gemini AI Model
+        model = genai.GenerativeModel("gemini-1.5-flash")
+
+        # Send image to Gemini AI with a structured JSON request
+        response = model.generate_content([
+            {"text": "Analyze this plant image and determine if it has any disease. "
+                     "Return ONLY JSON format with NO extra text, markdown, or backticks. "
+                     "Ensure the JSON has these keys: "
+                     "'disease_name' (string), 'description' (string), 'causes' (string), and 'remedies' (list of strings)."},
+            image
+        ])
+
+        # Print the raw AI response for debugging
+        print("RAW AI RESPONSE:", response.text)
+
+        # Clean AI response text to remove Markdown backticks
+        response_text = response.text.strip()
+        response_text = re.sub(r"^```json|```$", "", response_text).strip()
+
+        # Try to parse AI response as JSON
+        try:
+            disease_info = json.loads(response_text)
+        except json.JSONDecodeError:
+            return Response({"error": "AI response was not in JSON format.", "raw_response": response.text}, status=500)
+
+        return Response(disease_info, status=200)
+    
+
+import re
+class PoisonousPlantCheckView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, *args, **kwargs):
+        if 'image' not in request.FILES:
+            return Response({"error": "No image uploaded."}, status=400)
+
+        # Open uploaded image
+        uploaded_image = request.FILES['image']
+        image = Image.open(uploaded_image)
+
+        # Initialize Gemini AI Model
+        model = genai.GenerativeModel("gemini-1.5-flash")
+
+        # Send image to Gemini AI with a structured JSON request
+        response = model.generate_content([
+            {
+                "text": "Analyze this plant or fruit image and determine if it is poisonous. "
+                        "Return ONLY JSON format with NO extra text, markdown, or backticks. "
+                        "Ensure the JSON has these keys: "
+                        "'is_poisonous' (boolean), "
+                        "'confidence_score' (float, between 0 and 1), "
+                        "'description' (string), "
+                        "'toxicity_level' ('Low', 'Medium', 'High'), "
+                        "'potential_effects' (list of strings), "
+                        "'safe_uses' (list of strings, if non-toxic)."
+            },
+            image
+        ])
+
+        # Print raw AI response for debugging
+        print("RAW AI RESPONSE:", response.text)
+
+        # Remove markdown-style backticks if they exist
+        response_text = response.text.strip()
+        response_text = re.sub(r"^```json|```$", "", response_text).strip()
+
+        # Try to parse AI response as JSON
+        try:
+            poison_info = json.loads(response_text)
+        except json.JSONDecodeError:
+            return Response({"error": "AI response was not in JSON format.", "raw_response": response.text}, status=500)
+
+        return Response(poison_info, status=200)

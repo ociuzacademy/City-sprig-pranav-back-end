@@ -11,9 +11,6 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 import os
 from pathlib import Path
-import pymysql
-import torch
-pymysql.install_as_MySQLdb()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,6 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-_qa&c^hct3mfw_qgxy&mdzkli29qui+5ujrr3srw2u9&g(8*gc'
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -155,10 +153,11 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+GOOGLE_AI_API_KEY = "AIzaSyBiGnJc0rwQZbfLD8h5niRR-JaEqTT8AyA"
+# import os
+# from dotenv import load_dotenv
 
-import os
-from dotenv import load_dotenv
+# load_dotenv()  # Load environment variables from .env file
 
-load_dotenv()  # Load environment variables from .env file
+# GOOGLE_AI_API_KEY = os.getenv("GOOGLE_GAI_API_KEY")
 
-GOOGLE_AI_API_KEY = os.getenv("GOOGLE_AI_API_KEY")
