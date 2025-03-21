@@ -72,4 +72,5 @@ urlpatterns = [
     path("predict-disease/", PlantDiseasePredictionView.as_view(), name="predict_disease"),
     path('view_ordered_items/',ViewOrderedItemsView.as_view({'get':'list'}),name='view_ordered_items'),
     path('identify-plant/', PlantIdentificationView.as_view(), name='identify-plant'),
+    path('view_recommendations/',RecommendationView.as_view({'get':'list'}),name='view_recommendations'),
 ]

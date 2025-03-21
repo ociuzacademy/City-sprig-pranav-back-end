@@ -1044,3 +1044,4 @@ class PoisonousPlantCheckView(APIView):
             return Response({"error": "AI response was not in JSON format.", "raw_response": response.text}, status=500)
 
         return Response(poison_info, status=200)
+    
